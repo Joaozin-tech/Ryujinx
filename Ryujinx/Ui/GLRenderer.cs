@@ -438,17 +438,6 @@ namespace Ryujinx.Ui
                         {
                             _device.Hid.Keyboard.Update(hidKeyboard.Value);
                         }
-
-                        // Toggle vsync
-                        HotkeyButtons currentHotkeyButtons = keyboardController.GetHotkeyButtons();
-
-                        if (currentHotkeyButtons.HasFlag(HotkeyButtons.ToggleVSync) &&
-                            !_prevHotkeyButtons.HasFlag(HotkeyButtons.ToggleVSync))
-                        {
-                            _device.EnableDeviceVsync = !_device.EnableDeviceVsync;
-                        }
-
-                        _prevHotkeyButtons = currentHotkeyButtons;
                     }
                 }
                 else if (inputConfig is Common.Configuration.Hid.ControllerConfig controllerConfig)
@@ -486,6 +475,17 @@ namespace Ryujinx.Ui
             }
 
             _device.Hid.Npads.SetGamepadsInput(gamepadInputs.ToArray());
+
+            // Hotkeys
+            HotkeyButtons currentHotkeyButtons = KeyboardController.GetHotkeyButtons(OpenTK.Input.Keyboard.GetState());
+
+            if (currentHotkeyButtons.HasFlag(HotkeyButtons.ToggleVSync) &&
+                !_prevHotkeyButtons.HasFlag(HotkeyButtons.ToggleVSync))
+            {
+                _device.EnableDeviceVsync = !_device.EnableDeviceVsync;
+            }
+
+            _prevHotkeyButtons = currentHotkeyButtons;
 
             //Touchscreen
             bool hasTouch = false;
