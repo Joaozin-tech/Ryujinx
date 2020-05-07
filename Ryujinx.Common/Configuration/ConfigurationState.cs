@@ -435,7 +435,7 @@ namespace Ryujinx.Configuration
             Ui.CustomThemePath.Value               = "";
             Hid.EnableKeyboard.Value               = false;
             
-            Hid.Hotkeys.Value     = new KeyboardHotkeys
+            Hid.Hotkeys.Value = new KeyboardHotkeys
             {
                 ToggleVsync = Key.Tab
             };
