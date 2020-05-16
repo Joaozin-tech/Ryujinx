@@ -117,6 +117,64 @@ namespace Ryujinx.HLE.HOS.Services.Time.TimeZone
             }
         }
 
+        public List<(int Offset, string Location)> ParseTzOffsets()
+        {
+            List<(int Offset, string Location)> outList = new List<(int Offset, string Location)>();
+            var now = System.DateTimeOffset.Now.ToUnixTimeSeconds();
+            using (IStorage ncaStorage = new LocalStorage(_virtualFileSystem.SwitchPathToSystemPath(GetTimeZoneBinaryTitleContentPath()), FileAccess.Read, FileMode.Open))
+            {
+                Nca nca = new Nca(_virtualFileSystem.KeySet, ncaStorage);
+                using IFileSystem romfs = nca.OpenFileSystem(NcaSectionType.Data, _fsIntegrityCheckLevel);
+
+                foreach (string locName in LocationNameCache)
+                {
+                    if (locName.StartsWith("Etc"))
+                    {
+                        continue;
+                    }
+
+                    if (romfs.OpenFile(out IFile tzif, $"/zoneinfo/{locName}".ToU8Span(), OpenMode.Read) != Result.Success)
+                    {
+                        Logger.PrintError(LogClass.ServiceTime, $"Error opening /zoneinfo/{locName}");
+                        continue;
+                    }
+
+                    using (tzif)
+                    {
+                        TimeZone.ParseTimeZoneBinary(out TimeZoneRule r, tzif.AsStream());
+
+                        int curOffset = 0;
+                        if (r.TimeCount > 0) // Find the current transition period
+                        {
+                            int fin = 0;
+                            for (int i = 0; i < r.TimeCount; ++i)
+                            {
+                                if (r.Ats[i] <= now)
+                                {
+                                    fin = i;
+                                }
+                            }
+                            curOffset = r.Ttis[r.Types[fin]].GmtOffset;
+                            outList.Add((curOffset, locName));
+                        }
+                        else if (r.TypeCount >= 1) // Otherwise, use the first offset in TTInfo
+                        {
+                            curOffset = r.Ttis[0].GmtOffset;
+                            outList.Add((curOffset, locName));
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            outList.Sort();
+
+            return outList;
+        }
+
         private bool IsLocationNameValid(string locationName)
         {
             foreach (string cachedLocationName in LocationNameCache)

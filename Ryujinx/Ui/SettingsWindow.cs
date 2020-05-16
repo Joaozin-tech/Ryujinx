@@ -7,8 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Ryujinx.Common.Configuration.Hid;
 using GUI = Gtk.Builder.ObjectAttribute;
 
@@ -176,18 +176,29 @@ namespace Ryujinx.Ui
 
             timeZoneContentManager.InitializeInstance(virtualFileSystem, contentManager, LibHac.FsSystem.IntegrityCheckLevel.None);
 
-            List<string> locationNames = timeZoneContentManager.LocationNameCache.ToList();
-
-            locationNames.Sort();
-
-            foreach (string locationName in locationNames)
+            Task.Run(() =>
             {
-                _systemTimeZoneSelect.Append(locationName, locationName);
-            }
+                _systemTimeZoneSelect.Sensitive = false;
+
+                var entries = timeZoneContentManager.ParseTzOffsets();
+
+                foreach (var (offset, location) in entries)
+                {
+                    string displayName = location;
+
+                    var hours = Math.DivRem(offset, 3600, out int seconds);
+                    var minutes = Math.Abs(seconds) / 60;
+                    _systemTimeZoneSelect.Append(location, $"UTC{hours:+0#;-0#;+00}:{minutes:D2}   {displayName}");
+                }
+
+                _systemTimeZoneSelect.SetActiveId(timeZoneContentManager.SanityCheckDeviceLocationName());
+
+                _systemTimeZoneSelect.Sensitive = true;
+            });
 
             _systemLanguageSelect.SetActiveId(ConfigurationState.Instance.System.Language.Value.ToString());
             _systemRegionSelect.SetActiveId(ConfigurationState.Instance.System.Region.Value.ToString());
-            _systemTimeZoneSelect.SetActiveId(timeZoneContentManager.SanityCheckDeviceLocationName());
+
             _anisotropy.SetActiveId(ConfigurationState.Instance.Graphics.MaxAnisotropy.Value.ToString());
 
             _custThemePath.Buffer.Text           = ConfigurationState.Instance.Ui.CustomThemePath;
