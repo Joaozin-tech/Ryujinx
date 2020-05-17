@@ -10,6 +10,7 @@ using Ryujinx.HLE.FileSystem;
 using Ryujinx.HLE.FileSystem.Content;
 using Ryujinx.HLE.HOS.Services.Time.Clock;
 using Ryujinx.HLE.Utilities;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -117,9 +118,9 @@ namespace Ryujinx.HLE.HOS.Services.Time.TimeZone
             }
         }
 
-        public List<(int Offset, string Location)> ParseTzOffsets()
+        public List<(int Offset, string Location, string Abbr)> ParseTzOffsets()
         {
-            List<(int Offset, string Location)> outList = new List<(int Offset, string Location)>();
+            List<(int Offset, string Location, string Abbr)> outList = new List<(int Offset, string Location, string Abbr)>();
             var now = System.DateTimeOffset.Now.ToUnixTimeSeconds();
             using (IStorage ncaStorage = new LocalStorage(_virtualFileSystem.SwitchPathToSystemPath(GetTimeZoneBinaryTitleContentPath()), FileAccess.Read, FileMode.Open))
             {
@@ -143,7 +144,7 @@ namespace Ryujinx.HLE.HOS.Services.Time.TimeZone
                     {
                         TimeZone.ParseTimeZoneBinary(out TimeZoneRule r, tzif.AsStream());
 
-                        int curOffset = 0;
+                        TimeTypeInfo curTTi;
                         if (r.TimeCount > 0) // Find the current transition period
                         {
                             int fin = 0;
@@ -154,13 +155,21 @@ namespace Ryujinx.HLE.HOS.Services.Time.TimeZone
                                     fin = i;
                                 }
                             }
-                            curOffset = r.Ttis[r.Types[fin]].GmtOffset;
-                            outList.Add((curOffset, locName));
+                            curTTi = r.Ttis[r.Types[fin]];
+
+                            var abbrStart = r.Chars.AsSpan(curTTi.AbbreviationListIndex);
+                            int abbrEnd = abbrStart.IndexOf('\0');
+
+                            outList.Add((curTTi.GmtOffset, locName, abbrStart.Slice(0, abbrEnd).ToString()));
                         }
                         else if (r.TypeCount >= 1) // Otherwise, use the first offset in TTInfo
                         {
-                            curOffset = r.Ttis[0].GmtOffset;
-                            outList.Add((curOffset, locName));
+                            curTTi = r.Ttis[0];
+
+                            var abbrStart = r.Chars.AsSpan(curTTi.AbbreviationListIndex);
+                            int abbrEnd = abbrStart.IndexOf('\0');
+
+                            outList.Add((curTTi.GmtOffset, locName, abbrStart.Slice(0, abbrEnd).ToString()));
                         }
                         else
                         {

@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Threading.Tasks;
 using Ryujinx.Common.Configuration.Hid;
 using GUI = Gtk.Builder.ObjectAttribute;
 
@@ -19,55 +18,58 @@ namespace Ryujinx.Ui
         private static ListStore         _gameDirsBoxStore;
         private static VirtualFileSystem _virtualFileSystem;
 
+        private TimeZoneContentManager _timeZoneContentManager;
+        private HashSet<string> _validTzRegions;
         private long _systemTimeOffset;
 
 #pragma warning disable CS0649, IDE0044
-        [GUI] CheckButton  _errorLogToggle;
-        [GUI] CheckButton  _warningLogToggle;
-        [GUI] CheckButton  _infoLogToggle;
-        [GUI] CheckButton  _stubLogToggle;
-        [GUI] CheckButton  _debugLogToggle;
-        [GUI] CheckButton  _fileLogToggle;
-        [GUI] CheckButton  _guestLogToggle;
-        [GUI] CheckButton  _fsAccessLogToggle;
-        [GUI] Adjustment   _fsLogSpinAdjustment;
-        [GUI] CheckButton  _dockedModeToggle;
-        [GUI] CheckButton  _discordToggle;
-        [GUI] CheckButton  _vSyncToggle;
-        [GUI] CheckButton  _multiSchedToggle;
-        [GUI] CheckButton  _fsicToggle;
-        [GUI] CheckButton  _ignoreToggle;
-        [GUI] CheckButton  _directKeyboardAccess;
-        [GUI] ComboBoxText _systemLanguageSelect;
-        [GUI] ComboBoxText _systemRegionSelect;
-        [GUI] ComboBoxText _systemTimeZoneSelect;
-        [GUI] SpinButton   _systemTimeYearSpin;
-        [GUI] SpinButton   _systemTimeMonthSpin;
-        [GUI] SpinButton   _systemTimeDaySpin;
-        [GUI] SpinButton   _systemTimeHourSpin;
-        [GUI] SpinButton   _systemTimeMinuteSpin;
-        [GUI] Adjustment   _systemTimeYearSpinAdjustment;
-        [GUI] Adjustment   _systemTimeMonthSpinAdjustment;
-        [GUI] Adjustment   _systemTimeDaySpinAdjustment;
-        [GUI] Adjustment   _systemTimeHourSpinAdjustment;
-        [GUI] Adjustment   _systemTimeMinuteSpinAdjustment;
-        [GUI] CheckButton  _custThemeToggle;
-        [GUI] Entry        _custThemePath;
-        [GUI] ToggleButton _browseThemePath;
-        [GUI] Label        _custThemePathLabel;
-        [GUI] TreeView     _gameDirsBox;
-        [GUI] Entry        _addGameDirBox;
-        [GUI] Entry        _graphicsShadersDumpPath;
-        [GUI] ComboBoxText _anisotropy;
-        [GUI] ToggleButton _configureController1;
-        [GUI] ToggleButton _configureController2;
-        [GUI] ToggleButton _configureController3;
-        [GUI] ToggleButton _configureController4;
-        [GUI] ToggleButton _configureController5;
-        [GUI] ToggleButton _configureController6;
-        [GUI] ToggleButton _configureController7;
-        [GUI] ToggleButton _configureController8;
-        [GUI] ToggleButton _configureControllerH;
+        [GUI] CheckButton     _errorLogToggle;
+        [GUI] CheckButton     _warningLogToggle;
+        [GUI] CheckButton     _infoLogToggle;
+        [GUI] CheckButton     _stubLogToggle;
+        [GUI] CheckButton     _debugLogToggle;
+        [GUI] CheckButton     _fileLogToggle;
+        [GUI] CheckButton     _guestLogToggle;
+        [GUI] CheckButton     _fsAccessLogToggle;
+        [GUI] Adjustment      _fsLogSpinAdjustment;
+        [GUI] CheckButton     _dockedModeToggle;
+        [GUI] CheckButton     _discordToggle;
+        [GUI] CheckButton     _vSyncToggle;
+        [GUI] CheckButton     _multiSchedToggle;
+        [GUI] CheckButton     _fsicToggle;
+        [GUI] CheckButton     _ignoreToggle;
+        [GUI] CheckButton     _directKeyboardAccess;
+        [GUI] ComboBoxText    _systemLanguageSelect;
+        [GUI] ComboBoxText    _systemRegionSelect;
+        [GUI] Entry           _systemTimeZoneEntry;
+        [GUI] EntryCompletion _systemTimeZoneCompletion;
+        [GUI] SpinButton      _systemTimeYearSpin;
+        [GUI] SpinButton      _systemTimeMonthSpin;
+        [GUI] SpinButton      _systemTimeDaySpin;
+        [GUI] SpinButton      _systemTimeHourSpin;
+        [GUI] SpinButton      _systemTimeMinuteSpin;
+        [GUI] Adjustment      _systemTimeYearSpinAdjustment;
+        [GUI] Adjustment      _systemTimeMonthSpinAdjustment;
+        [GUI] Adjustment      _systemTimeDaySpinAdjustment;
+        [GUI] Adjustment      _systemTimeHourSpinAdjustment;
+        [GUI] Adjustment      _systemTimeMinuteSpinAdjustment;
+        [GUI] CheckButton     _custThemeToggle;
+        [GUI] Entry           _custThemePath;
+        [GUI] ToggleButton    _browseThemePath;
+        [GUI] Label           _custThemePathLabel;
+        [GUI] TreeView        _gameDirsBox;
+        [GUI] Entry           _addGameDirBox;
+        [GUI] Entry           _graphicsShadersDumpPath;
+        [GUI] ComboBoxText    _anisotropy;
+        [GUI] ToggleButton    _configureController1;
+        [GUI] ToggleButton    _configureController2;
+        [GUI] ToggleButton    _configureController3;
+        [GUI] ToggleButton    _configureController4;
+        [GUI] ToggleButton    _configureController5;
+        [GUI] ToggleButton    _configureController6;
+        [GUI] ToggleButton    _configureController7;
+        [GUI] ToggleButton    _configureController8;
+        [GUI] ToggleButton    _configureControllerH;
 #pragma warning restore CS0649, IDE0044
 
         public SettingsWindow(VirtualFileSystem virtualFileSystem, HLE.FileSystem.Content.ContentManager contentManager) : this(new Builder("Ryujinx.Ui.SettingsWindow.glade"), virtualFileSystem, contentManager) { }
@@ -79,6 +81,11 @@ namespace Ryujinx.Ui
             this.Icon = new Gdk.Pixbuf(Assembly.GetExecutingAssembly(), "Ryujinx.Ui.assets.Icon.png");
 
             _virtualFileSystem = virtualFileSystem;
+
+            _timeZoneContentManager = new TimeZoneContentManager();
+            _timeZoneContentManager.InitializeInstance(virtualFileSystem, contentManager, LibHac.FsSystem.IntegrityCheckLevel.None);
+
+            _validTzRegions = new HashSet<string>();
 
             //Bind Events
             _configureController1.Pressed += (sender, args) => ConfigureController_Pressed(sender, args, PlayerIndex.Player1);
@@ -172,29 +179,42 @@ namespace Ryujinx.Ui
                 _custThemeToggle.Click();
             }
 
-            TimeZoneContentManager timeZoneContentManager = new TimeZoneContentManager();
 
-            timeZoneContentManager.InitializeInstance(virtualFileSystem, contentManager, LibHac.FsSystem.IntegrityCheckLevel.None);
+            // Custom EntryCompletion Columns. If added to glade, need to override more signals
+            ListStore tzList = new ListStore(typeof(string), typeof(string), typeof(string));
+            _systemTimeZoneCompletion.Model = tzList;
 
-            Task.Run(() =>
+            CellRendererText offsetCol = new CellRendererText();
+            CellRendererText abbrevCol = new CellRendererText();
+
+            _systemTimeZoneCompletion.PackStart(offsetCol, false);
+            _systemTimeZoneCompletion.AddAttribute(offsetCol, "text", 0);
+            _systemTimeZoneCompletion.TextColumn = 1; // Regions Column
+            _systemTimeZoneCompletion.PackStart(abbrevCol, false);
+            _systemTimeZoneCompletion.AddAttribute(abbrevCol, "text", 2);
+
+            int maxSize = 0;
+            var entries = _timeZoneContentManager.ParseTzOffsets();
+
+            foreach (var (offset, location, abbr) in entries)
             {
-                _systemTimeZoneSelect.Sensitive = false;
+                string displayName = location;
 
-                var entries = timeZoneContentManager.ParseTzOffsets();
+                var hours = Math.DivRem(offset, 3600, out int seconds);
+                var minutes = Math.Abs(seconds) / 60;
 
-                foreach (var (offset, location) in entries)
-                {
-                    string displayName = location;
+                var abbr2 = (abbr.StartsWith('+') || abbr.StartsWith('-')) ? string.Empty : abbr;
 
-                    var hours = Math.DivRem(offset, 3600, out int seconds);
-                    var minutes = Math.Abs(seconds) / 60;
-                    _systemTimeZoneSelect.Append(location, $"UTC{hours:+0#;-0#;+00}:{minutes:D2}   {displayName}");
-                }
+                tzList.AppendValues($"UTC{hours:+0#;-0#;+00}:{minutes:D2} ", displayName, abbr2);
+                _validTzRegions.Add(displayName);
 
-                _systemTimeZoneSelect.SetActiveId(timeZoneContentManager.SanityCheckDeviceLocationName());
+                maxSize = Math.Max(maxSize, displayName.Length);
+            }
 
-                _systemTimeZoneSelect.Sensitive = true;
-            });
+            _systemTimeZoneEntry.WidthChars = maxSize + 1;
+            _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName();
+
+            _systemTimeZoneCompletion.MatchFunc = TimeZoneMatchFunc;
 
             _systemLanguageSelect.SetActiveId(ConfigurationState.Instance.System.Language.Value.ToString());
             _systemRegionSelect.SetActiveId(ConfigurationState.Instance.System.Region.Value.ToString());
@@ -260,6 +280,22 @@ namespace Ryujinx.Ui
         }
 
         //Events
+        private void TimeZoneEntry_FocusOut(Object sender, FocusOutEventArgs e)
+        {
+            if (!_validTzRegions.Contains(_systemTimeZoneEntry.Text))
+            {
+                _systemTimeZoneEntry.Text = _timeZoneContentManager.SanityCheckDeviceLocationName();
+            }
+        }
+
+        private bool TimeZoneMatchFunc(EntryCompletion compl, string key, TreeIter iter)
+        {
+            key = key.Replace('_', ' ').Trim().ToLower();
+            var region = (string)compl.Model.GetValue(iter, 1);
+            var offset = ((string)compl.Model.GetValue(iter, 0)).Substring(3);
+            return region.Replace('_', ' ').ToLower().Contains(key) || offset.StartsWith(key);
+        }
+
         private void SystemTimeSpin_ValueChanged(Object sender, EventArgs e)
         {
             int year   = _systemTimeYearSpin.ValueAsInt;
@@ -380,6 +416,11 @@ namespace Ryujinx.Ui
                 _gameDirsBoxStore.IterNext(ref treeIter);
             }
 
+            if (_validTzRegions.Contains(_systemTimeZoneEntry.Text))
+            {
+                ConfigurationState.Instance.System.TimeZone.Value = _systemTimeZoneEntry.Text;
+            }
+
             ConfigurationState.Instance.Logger.EnableError.Value               = _errorLogToggle.Active;
             ConfigurationState.Instance.Logger.EnableWarn.Value                = _warningLogToggle.Active;
             ConfigurationState.Instance.Logger.EnableInfo.Value                = _infoLogToggle.Active;
@@ -398,7 +439,6 @@ namespace Ryujinx.Ui
             ConfigurationState.Instance.Ui.EnableCustomTheme.Value             = _custThemeToggle.Active;
             ConfigurationState.Instance.System.Language.Value                  = Enum.Parse<Language>(_systemLanguageSelect.ActiveId);
             ConfigurationState.Instance.System.Region.Value                    = Enum.Parse<Configuration.System.Region>(_systemRegionSelect.ActiveId);
-            ConfigurationState.Instance.System.TimeZone.Value                  = _systemTimeZoneSelect.ActiveId;
             ConfigurationState.Instance.System.SystemTimeOffset.Value          = _systemTimeOffset;
             ConfigurationState.Instance.Ui.CustomThemePath.Value               = _custThemePath.Buffer.Text;
             ConfigurationState.Instance.Graphics.ShadersDumpPath.Value         = _graphicsShadersDumpPath.Buffer.Text;
