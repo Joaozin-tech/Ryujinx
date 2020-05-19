@@ -76,48 +76,22 @@
           </packing>
         </child>
         <child>
-          <object class="GtkBox">
+          <object class="GtkButtonBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_top">10</property>
+            <property name="margin_bottom">10</property>
+            <property name="layout_style">end</property>
             <child>
-              <object class="GtkButtonBox">
+              <object class="GtkButton" id="_saveButton">
+                <property name="label" translatable="yes">Save</property>
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_top">10</property>
-                <property name="margin_bottom">10</property>
-                <property name="layout_style">start</property>
-                <child>
-                  <object class="GtkButton" id="_addUpdate">
-                    <property name="label" translatable="yes">Add</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="tooltip_text" translatable="yes">Adds an update to this list</property>
-                    <property name="margin_left">10</property>
-                    <signal name="clicked" handler="AddButton_Clicked" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="_removeUpdate">
-                    <property name="label" translatable="yes">Remove</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="tooltip_text" translatable="yes">Removes the selected update</property>
-                    <property name="margin_left">10</property>
-                    <signal name="clicked" handler="RemoveButton_Clicked" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="margin_right">10</property>
+                <property name="margin_top">2</property>
+                <property name="margin_bottom">2</property>
+                <signal name="clicked" handler="SaveButton_Clicked" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -126,46 +100,15 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButtonBox">
+              <object class="GtkButton" id="_cancelButton">
+                <property name="label" translatable="yes">Cancel</property>
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_top">10</property>
-                <property name="margin_bottom">10</property>
-                <property name="layout_style">end</property>
-                <child>
-                  <object class="GtkButton" id="_saveButton">
-                    <property name="label" translatable="yes">Save</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="margin_right">10</property>
-                    <property name="margin_top">2</property>
-                    <property name="margin_bottom">2</property>
-                    <signal name="clicked" handler="SaveButton_Clicked" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="_cancelButton">
-                    <property name="label" translatable="yes">Cancel</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="margin_right">10</property>
-                    <property name="margin_top">2</property>
-                    <property name="margin_bottom">2</property>
-                    <signal name="clicked" handler="CancelButton_Clicked" swapped="no"/>
-                  </object>
-                  <packing>
-                    <property name="expand">True</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="margin_right">10</property>
+                <property name="margin_top">2</property>
+                <property name="margin_bottom">2</property>
+                <signal name="clicked" handler="CancelButton_Clicked" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">True</property>

@@ -6,7 +6,6 @@ using LibHac.FsSystem;
 using LibHac.FsSystem.NcaUtils;
 using LibHac.Ncm;
 using LibHac.Ns;
-using LibHac.Spl;
 using Ryujinx.Common.Logging;
 using Ryujinx.Common.Configuration;
 using Ryujinx.Configuration.System;
@@ -20,7 +19,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
-using RightsId = LibHac.Fs.RightsId;
 using JsonHelper = Ryujinx.Common.Utilities.JsonHelper;
 
 namespace Ryujinx.Ui
@@ -147,8 +145,6 @@ namespace Ryujinx.Ui
                             {
                                 PartitionFileSystem pfs;
 
-                                bool isExeFs = false;
-
                                 if (Path.GetExtension(applicationPath).ToLower() == ".xci")
                                 {
                                     Xci xci = new Xci(_virtualFileSystem.KeySet, file.AsStorage());
@@ -158,38 +154,59 @@ namespace Ryujinx.Ui
                                 else
                                 {
                                     pfs = new PartitionFileSystem(file.AsStorage());
+                                }
 
-                                    // If the NSP doesn't have a main NCA, decrement the number of applications found and then continue to the next application.
-                                    bool hasMainNca = false;
+                                bool hasMainNca = false; // If the PFS0 doesn't have a main NCA, decrement the number of applications found and then continue to the next application.
+                                bool isExeFs    = false;
 
-                                    foreach (DirectoryEntryEx fileEntry in pfs.EnumerateEntries("/", "*"))
+                                foreach (DirectoryEntryEx fileEntry in pfs.EnumerateEntries("/", "*"))
+                                {
+                                    if (Path.GetExtension(fileEntry.FullPath).ToLower() == ".nca")
                                     {
-                                        if (Path.GetExtension(fileEntry.FullPath).ToLower() == ".nca")
+                                        pfs.OpenFile(out IFile ncaFile, fileEntry.FullPath.ToU8Span(), OpenMode.Read).ThrowIfFailure();
+
+                                        Nca nca = new Nca(_virtualFileSystem.KeySet, ncaFile.AsStorage());
+                                        int dataIndex = Nca.GetSectionIndexFromType(NcaSectionType.Data, NcaContentType.Program);
+
+                                        if (nca.Header.ContentType == NcaContentType.Program && !nca.Header.GetFsHeader(dataIndex).IsPatchSection())
                                         {
-                                            pfs.OpenFile(out IFile ncaFile, fileEntry.FullPath.ToU8Span(), OpenMode.Read).ThrowIfFailure();
+                                            hasMainNca = true;
+                                        }
 
-                                            Nca nca       = new Nca(_virtualFileSystem.KeySet, ncaFile.AsStorage());
-                                            int dataIndex = Nca.GetSectionIndexFromType(NcaSectionType.Data, NcaContentType.Program);
-
-                                            if (nca.Header.ContentType == NcaContentType.Program && !nca.Header.GetFsHeader(dataIndex).IsPatchSection())
+                                        if (nca.Header.ContentType == NcaContentType.PublicData)
+                                        {
+                                            string baseTitleId = $"{nca.Header.TitleId.ToString("x16").Substring(0, 12)}{GetPreviousHexDigit(nca.Header.TitleId.ToString("x16").Substring(12, 1))}000";
+                                            string dlcJsonPath = Path.Combine(virtualFileSystem.GetBasePath(), "games", baseTitleId, "dlc.json");
+                                            
+                                            Dictionary<string, bool> dlcDictionary;
+                                            try
                                             {
-                                                hasMainNca = true;
-
-                                                break;
+                                                dlcDictionary = JsonHelper.DeserializeFromFile<Dictionary<string, bool>>(dlcJsonPath);
                                             }
-                                        }
-                                        else if (Path.GetFileNameWithoutExtension(fileEntry.FullPath) == "main")
-                                        {
-                                            isExeFs = true;
+                                            catch
+                                            {
+                                                dlcDictionary = new Dictionary<string, bool>();
+                                            }
+
+                                            if (!dlcDictionary.ContainsKey(applicationPath))
+                                            {
+                                                dlcDictionary.Add(applicationPath, true);
+                                            }
+
+                                            File.WriteAllText(dlcJsonPath, JsonSerializer.Serialize(dlcDictionary));
                                         }
                                     }
-
-                                    if (!hasMainNca && !isExeFs)
+                                    else if (Path.GetFileNameWithoutExtension(fileEntry.FullPath) == "main")
                                     {
-                                        numApplicationsFound--;
-
-                                        continue;
+                                        isExeFs = true;
                                     }
+                                }
+
+                                if (!hasMainNca && !isExeFs)
+                                {
+                                    numApplicationsFound--;
+
+                                    continue;
                                 }
 
                                 if (isExeFs)
@@ -700,6 +717,17 @@ namespace Ryujinx.Ui
             version = "";
 
             return false;
+        }
+
+        public static string GetPreviousHexDigit(string hexDigit)
+        {
+            string[] hexDigits = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f" };
+            int i = Array.IndexOf(hexDigits, hexDigit) - 1;
+
+            if (i < 0)
+                i = 0;
+
+            return hexDigits[i];
         }
     }
 }
