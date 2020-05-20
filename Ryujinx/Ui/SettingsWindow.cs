@@ -199,17 +199,15 @@ namespace Ryujinx.Ui
 
             foreach (var (offset, location, abbr) in entries)
             {
-                string displayName = location;
-
                 var hours = Math.DivRem(offset, 3600, out int seconds);
                 var minutes = Math.Abs(seconds) / 60;
 
                 var abbr2 = (abbr.StartsWith('+') || abbr.StartsWith('-')) ? string.Empty : abbr;
 
-                tzList.AppendValues($"UTC{hours:+0#;-0#;+00}:{minutes:D2} ", displayName, abbr2);
-                _validTzRegions.Add(displayName);
+                tzList.AppendValues($"UTC{hours:+0#;-0#;+00}:{minutes:D2} ", location, abbr2);
+                _validTzRegions.Add(location);
 
-                maxSize = Math.Max(maxSize, displayName.Length);
+                maxSize = Math.Max(maxSize, location.Length);
             }
 
             _systemTimeZoneEntry.WidthChars = maxSize + 1;
