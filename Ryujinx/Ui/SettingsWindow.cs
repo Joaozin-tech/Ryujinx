@@ -97,6 +97,7 @@ namespace Ryujinx.Ui
             _configureController7.Pressed += (sender, args) => ConfigureController_Pressed(sender, args, PlayerIndex.Player7);
             _configureController8.Pressed += (sender, args) => ConfigureController_Pressed(sender, args, PlayerIndex.Player8);
             _configureControllerH.Pressed += (sender, args) => ConfigureController_Pressed(sender, args, PlayerIndex.Handheld);
+            _systemTimeZoneEntry.FocusOutEvent += TimeZoneEntry_FocusOut;
 
             //Setup Currents
             if (ConfigurationState.Instance.Logger.EnableFileLog)
@@ -218,7 +219,6 @@ namespace Ryujinx.Ui
 
             _systemLanguageSelect.SetActiveId(ConfigurationState.Instance.System.Language.Value.ToString());
             _systemRegionSelect.SetActiveId(ConfigurationState.Instance.System.Region.Value.ToString());
-
             _anisotropy.SetActiveId(ConfigurationState.Instance.Graphics.MaxAnisotropy.Value.ToString());
 
             _custThemePath.Buffer.Text           = ConfigurationState.Instance.Ui.CustomThemePath;

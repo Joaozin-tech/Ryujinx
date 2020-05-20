@@ -1207,7 +1207,6 @@
                                         <property name="tooltip_text" translatable="yes">Change System TimeZone</property>
                                         <property name="margin_left">5</property>
                                         <property name="completion">_systemTimeZoneCompletion</property>
-                                        <signal name="focus-out-event" handler="TimeZoneEntry_FocusOut" swapped="no"/>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
