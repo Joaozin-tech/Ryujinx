@@ -85,7 +85,7 @@ namespace Ryujinx.Ui
             _timeZoneContentManager = new TimeZoneContentManager();
             _timeZoneContentManager.InitializeInstance(virtualFileSystem, contentManager, LibHac.FsSystem.IntegrityCheckLevel.None);
 
-            _validTzRegions = new HashSet<string>();
+            _validTzRegions = new HashSet<string>(_timeZoneContentManager.LocationNameCache.Length, StringComparer.Ordinal); // Zone regions are identifiers. Must match exactly.
 
             //Bind Events
             _configureController1.Pressed += (sender, args) => ConfigureController_Pressed(sender, args, PlayerIndex.Player1);
@@ -288,10 +288,11 @@ namespace Ryujinx.Ui
 
         private bool TimeZoneMatchFunc(EntryCompletion compl, string key, TreeIter iter)
         {
-            key = key.Replace('_', ' ').Trim().ToLower();
+            key = key.Trim().Replace(' ', '_');
             var region = (string)compl.Model.GetValue(iter, 1);
             var offset = ((string)compl.Model.GetValue(iter, 0)).Substring(3);
-            return region.Replace('_', ' ').ToLower().Contains(key) || offset.StartsWith(key);
+            
+            return region.Contains(key, StringComparison.OrdinalIgnoreCase) || offset.StartsWith(key);
         }
 
         private void SystemTimeSpin_ValueChanged(Object sender, EventArgs e)

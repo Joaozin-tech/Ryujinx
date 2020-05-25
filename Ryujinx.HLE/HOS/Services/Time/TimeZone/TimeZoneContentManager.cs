@@ -142,39 +142,35 @@ namespace Ryujinx.HLE.HOS.Services.Time.TimeZone
 
                     using (tzif)
                     {
-                        TimeZone.ParseTimeZoneBinary(out TimeZoneRule r, tzif.AsStream());
+                        TimeZone.ParseTimeZoneBinary(out TimeZoneRule tzRule, tzif.AsStream());
 
-                        TimeTypeInfo curTTi;
-                        if (r.TimeCount > 0) // Find the current transition period
+                        TimeTypeInfo ttInfo;
+                        if (tzRule.TimeCount > 0) // Find the current transition period
                         {
                             int fin = 0;
-                            for (int i = 0; i < r.TimeCount; ++i)
+                            for (int i = 0; i < tzRule.TimeCount; ++i)
                             {
-                                if (r.Ats[i] <= now)
+                                if (tzRule.Ats[i] <= now)
                                 {
                                     fin = i;
                                 }
                             }
-                            curTTi = r.Ttis[r.Types[fin]];
-
-                            var abbrStart = r.Chars.AsSpan(curTTi.AbbreviationListIndex);
-                            int abbrEnd = abbrStart.IndexOf('\0');
-
-                            outList.Add((curTTi.GmtOffset, locName, abbrStart.Slice(0, abbrEnd).ToString()));
+                            ttInfo = tzRule.Ttis[tzRule.Types[fin]];
                         }
-                        else if (r.TypeCount >= 1) // Otherwise, use the first offset in TTInfo
+                        else if (tzRule.TypeCount >= 1) // Otherwise, use the first offset in TTInfo
                         {
-                            curTTi = r.Ttis[0];
-
-                            var abbrStart = r.Chars.AsSpan(curTTi.AbbreviationListIndex);
-                            int abbrEnd = abbrStart.IndexOf('\0');
-
-                            outList.Add((curTTi.GmtOffset, locName, abbrStart.Slice(0, abbrEnd).ToString()));
+                            ttInfo = tzRule.Ttis[0];
                         }
                         else
                         {
+                            Logger.PrintError(LogClass.ServiceTime, $"Couldn't find UTC offset for zone {locName}");
                             continue;
                         }
+
+                        var abbrStart = tzRule.Chars.AsSpan(ttInfo.AbbreviationListIndex);
+                        int abbrEnd = abbrStart.IndexOf('\0');
+
+                        outList.Add((ttInfo.GmtOffset, locName, abbrStart.Slice(0, abbrEnd).ToString()));
                     }
                 }
             }
